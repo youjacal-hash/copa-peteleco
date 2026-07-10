@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- NAVBAR -->
+<nav class="sticky top-0 z-40 bg-dark-800/95 backdrop-blur border-b border-dark-600">
+  <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span class="text-xl">⚽</span>
+      <span class="font-black text-white text-lg tracking-tight">Copa <span class="text-brand-400">Peteleco</span></span>
+      <span class="hidden sm:inline text-xs text-gray-500 font-medium ml-1">2026</span>
+    </div>
+    <div class="flex items-center gap-1 sm:gap-2">
+      <a href="/" class="px-3 py-1.5 text-sm font-semibold text-gray-300 hover:text-brand-400 hover:bg-dark-600 rounded-lg transition">
+        Meus Palpites
+      </a>
+      <a href="{{ url_for('perfil') }}" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-brand-400 bg-brand-500/10 rounded-lg transition">
+        {% if user.avatar_url %}
+          <img src="{{ user.avatar_url }}" class="w-5 h-5 rounded-full object-cover" onerror="this.style.display='none'" />
+        {% else %}
+          👤
+        {% endif %}
+        <span class="hidden sm:inline">Meu Perfil</span>
+      </a>
+      <a href="{{ url_for('admin') }}" class="px-3 py-1.5 text-sm font-semibold text-gray-300 hover:text-brand-400 hover:bg-dark-600 rounded-lg transition">
+        ⚙️ Admin
+      </a>
+      <a href="{{ url_for('logout') }}" class="px-3 py-1.5 text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-dark-600 rounded-lg transition">
+        Sair
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="max-w-xl mx-auto px-4 py-8">
+
+  <!-- Avatar + cabeçalho -->
+  <div class="flex flex-col items-center mb-8">
+    <div class="relative mb-4">
+      {% if user.avatar_url %}
+        <img id="avatar-preview" src="{{ user.avatar_url }}"
+             class="w-24 h-24 rounded-full object-cover border-4 border-brand-500 shadow-xl"
+             onerror="this.src=''; this.classList.add('hidden'); document.getElementById('avatar-fallback').classList.remove('hidden')" />
+        <div id="avatar-fallback" class="hidden w-24 h-24 rounded-full bg-dark-600 border-4 border-dark-500 flex items-center justify-center text-4xl">
+          👤
+        </div>
+      {% else %}
+        <img id="avatar-preview" class="hidden w-24 h-24 rounded-full object-cover border-4 border-brand-500 shadow-xl" src="" />
+        <div id="avatar-fallback" class="w-24 h-24 rounded-full bg-dark-600 border-4 border-dark-500 flex items-center justify-center text-4xl">
+          👤
+        </div>
+      {% endif %}
+      <div class="absolute bottom-0 right-0 w-7 h-7 bg-brand-500 rounded-full flex items-center justify-center text-sm shadow">✏️</div>
+    </div>
+    <h1 class="text-2xl font-black text-white">{{ user.username }}</h1>
+    <p class="text-brand-400 font-semibold mt-1">{{ user.total_points }} pontos</p>
+  </div>
+
+  <!-- Formulário de edição -->
+  <div class="bg-dark-700 rounded-2xl border border-dark-500 p-6 shadow-xl">
+    <h2 class="text-base font-bold text-white mb-5 flex items-center gap-2">
+      <span class="text-brand-400">✏️</span> Editar Perfil
+    </h2>
+
+    <form method="POST" class="space-y-5">
+
+      <!-- Username -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-400 mb-1.5">Nome de usuário</label>
+        <input type="text" name="username" required
+          value="{{ user.username }}"
+          class="w-full px-4 py-3 rounded-xl bg-dark-600 border border-dark-500 text-white placeholder-gray-500
+                 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+          placeholder="Seu nome de usuário" />
+      </div>
+
+      <!-- Senha -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-400 mb-1.5">Nova senha</label>
+        <input type="password" name="password" autocomplete="new-password"
+          class="w-full px-4 py-3 rounded-xl bg-dark-600 border border-dark-500 text-white placeholder-gray-500
+                 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+          placeholder="Deixe vazio para manter a senha atual" />
+        <p class="text-xs text-gray-600 mt-1">Deixe em branco para não alterar a senha.</p>
+      </div>
+
+      <!-- Avatar URL -->
+      <div>
+        <label class="block text-sm font-semibold text-gray-400 mb-1.5">Link da foto de perfil</label>
+        <input type="url" name="avatar_url" id="avatar-url-input"
+          value="{{ user.avatar_url or '' }}"
+          class="w-full px-4 py-3 rounded-xl bg-dark-600 border border-dark-500 text-white placeholder-gray-500
+                 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+          placeholder="https://..." />
+        <p class="text-xs text-gray-600 mt-1">Cole a URL de uma imagem (JPG, PNG, etc.).</p>
+      </div>
+
+      <button type="submit"
+        class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold rounded-xl transition text-base mt-2">
+        Salvar Alterações
+      </button>
+    </form>
+  </div>
+
+  <!-- Estatísticas -->
+  <div class="mt-4 bg-dark-700 rounded-2xl border border-dark-600 p-5">
+    <h3 class="text-sm font-bold text-gray-400 mb-3 uppercase tracking-wider">Suas estatísticas</h3>
+    <div class="grid grid-cols-2 gap-3">
+      <div class="bg-dark-600 rounded-xl p-4 text-center">
+        <p class="text-2xl font-black text-brand-400">{{ user.total_points }}</p>
+        <p class="text-xs text-gray-500 mt-1">Pontos totais</p>
+      </div>
+      <div class="bg-dark-600 rounded-xl p-4 text-center">
+        <p class="text-2xl font-black text-white">{{ user.predictions | length }}</p>
+        <p class="text-xs text-gray-500 mt-1">Palpites feitos</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const urlInput = document.getElementById('avatar-url-input');
+const preview = document.getElementById('avatar-preview');
+const fallback = document.getElementById('avatar-fallback');
+
+urlInput.addEventListener('input', () => {
+  const url = urlInput.value.trim();
+  if (url) {
+    preview.src = url;
+    preview.classList.remove('hidden');
+    fallback.classList.add('hidden');
+    preview.onerror = () => {
+      preview.classList.add('hidden');
+      fallback.classList.remove('hidden');
+    };
+  } else {
+    preview.classList.add('hidden');
+    fallback.classList.remove('hidden');
+  }
+});
+</script>
+
+{% endblock %}

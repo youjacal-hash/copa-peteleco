@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+    <div class="text-center mb-8">
+      <div class="text-4xl mb-3">⚙️</div>
+      <h1 class="text-2xl font-black text-white">Painel Admin</h1>
+      <p class="text-gray-400 text-sm mt-1">Copa Peteleco 2026</p>
+    </div>
+    <div class="bg-dark-700 rounded-2xl p-8 border border-dark-500 shadow-2xl">
+      <form method="POST" class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-400 mb-1.5">Senha do Admin</label>
+          <input type="password" name="password" required autofocus
+            class="w-full px-4 py-3 rounded-xl bg-dark-600 border border-dark-500 text-white placeholder-gray-500
+                   focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition"
+            placeholder="Digite a senha" />
+        </div>
+        <button type="submit"
+          class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold rounded-xl transition">
+          Entrar no Admin
+        </button>
+      </form>
+      <p class="text-center mt-5">
+        <a href="{{ url_for('index') }}" class="text-sm text-gray-500 hover:text-gray-300 transition">← Voltar ao Bolão</a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

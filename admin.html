@@ -1,0 +1,219 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<!-- NAVBAR -->
+<nav class="sticky top-0 z-40 bg-dark-800/95 backdrop-blur border-b border-dark-600">
+  <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <span class="text-xl">⚙️</span>
+      <span class="font-black text-white text-lg">Admin <span class="text-brand-400">Peteleco</span></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <a href="{{ url_for('index') }}" class="px-3 py-1.5 text-sm font-semibold text-gray-300 hover:text-brand-400 hover:bg-dark-600 rounded-lg transition">
+        ← Bolão
+      </a>
+      <a href="{{ url_for('admin_logout') }}" class="px-3 py-1.5 text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-dark-600 rounded-lg transition">
+        Sair do Admin
+      </a>
+    </div>
+  </div>
+</nav>
+
+<div class="max-w-6xl mx-auto px-4 py-6 space-y-8">
+
+  <!-- ── CRIAR NOVO JOGO ── -->
+  <section>
+    <h2 class="text-lg font-black text-white mb-3 flex items-center gap-2"><span>➕</span> Criar Novo Jogo</h2>
+    <div class="bg-dark-700 rounded-2xl border border-dark-500 p-5">
+      <form method="POST" action="{{ url_for('admin_create_game') }}">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div class="col-span-2 sm:col-span-1">
+            <label class="label">Fase</label>
+            <select name="stage" class="input-field">
+              {% for k, v in stages.items() %}<option value="{{ k }}">{{ v }}</option>{% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="label">Time Casa</label>
+            <input type="text" name="home_team" required class="input-field" placeholder="Brasil" />
+          </div>
+          <div>
+            <label class="label">Bandeira Casa</label>
+            <input type="text" name="home_flag" required class="input-field" placeholder="br" />
+          </div>
+          <div>
+            <label class="label">Time Fora</label>
+            <input type="text" name="away_team" required class="input-field" placeholder="Japão" />
+          </div>
+          <div>
+            <label class="label">Bandeira Fora</label>
+            <input type="text" name="away_flag" required class="input-field" placeholder="jp" />
+          </div>
+          <div>
+            <label class="label">Data</label>
+            <input type="date" name="match_date" required class="input-field" />
+          </div>
+          <div>
+            <label class="label">Hora (BRT)</label>
+            <input type="time" name="match_time" required class="input-field" />
+          </div>
+          <div class="col-span-2 sm:col-span-1 flex items-end">
+            <button type="submit" class="w-full py-2.5 bg-green-600 hover:bg-green-500 text-white font-bold rounded-xl transition text-sm">
+              Criar Jogo
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ── GERENCIAR JOGOS ── -->
+  <section>
+    <h2 class="text-lg font-black text-white mb-3 flex items-center gap-2"><span>🏟️</span> Gerenciar Jogos</h2>
+    <div class="space-y-3">
+      {% for g in games %}
+      <div class="bg-dark-700 rounded-2xl border border-dark-500 p-4">
+        <!-- Game header -->
+        <div class="flex flex-wrap items-center gap-3 mb-4">
+          <span class="text-xs bg-brand-500/15 text-brand-400 px-2 py-0.5 rounded-full font-semibold">{{ stages[g.stage] }}</span>
+          <span class="font-bold text-white flex items-center gap-2">
+            <img src="https://flagcdn.com/20x15/{{ g.home_flag }}.png" class="rounded-sm" />
+            {{ g.home_team }}
+            <span class="text-gray-500 font-normal mx-1">×</span>
+            {{ g.away_team }}
+            <img src="https://flagcdn.com/20x15/{{ g.away_flag }}.png" class="rounded-sm" />
+          </span>
+          <span class="text-xs text-gray-500">{{ g.match_datetime.strftime('%d/%m/%Y %H:%M') }}</span>
+          {% if g.result_saved %}
+            <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">
+              Resultado: {{ g.home_score }}×{{ g.away_score }}
+            </span>
+          {% endif %}
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Save result -->
+          <form method="POST" action="{{ url_for('admin_save_result') }}" class="flex items-end gap-2">
+            <input type="hidden" name="game_id" value="{{ g.id }}" />
+            <div>
+              <label class="label">Placar Casa</label>
+              <input type="number" name="home_score" min="0" max="99"
+                value="{{ g.home_score if g.home_score is not none else '' }}"
+                class="input-field w-20" placeholder="0" />
+            </div>
+            <span class="text-gray-500 font-bold pb-2.5">×</span>
+            <div>
+              <label class="label">Placar Fora</label>
+              <input type="number" name="away_score" min="0" max="99"
+                value="{{ g.away_score if g.away_score is not none else '' }}"
+                class="input-field w-20" placeholder="0" />
+            </div>
+            <button type="submit" class="pb-0 px-4 py-2.5 bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold rounded-xl transition text-sm whitespace-nowrap">
+              Salvar Resultado
+            </button>
+          </form>
+
+          <!-- Edit game -->
+          <form method="POST" action="{{ url_for('admin_edit_game') }}" class="flex flex-wrap items-end gap-2">
+            <input type="hidden" name="game_id" value="{{ g.id }}" />
+            <div>
+              <label class="label">Casa</label>
+              <input type="text" name="home_team" value="{{ g.home_team }}" class="input-field w-28" />
+            </div>
+            <div>
+              <label class="label">Flag</label>
+              <input type="text" name="home_flag" value="{{ g.home_flag }}" class="input-field w-16" />
+            </div>
+            <div>
+              <label class="label">Fora</label>
+              <input type="text" name="away_team" value="{{ g.away_team }}" class="input-field w-28" />
+            </div>
+            <div>
+              <label class="label">Flag</label>
+              <input type="text" name="away_flag" value="{{ g.away_flag }}" class="input-field w-16" />
+            </div>
+            <div>
+              <label class="label">Data</label>
+              <input type="date" name="match_date" value="{{ g.match_datetime.strftime('%Y-%m-%d') }}" class="input-field w-36" />
+            </div>
+            <div>
+              <label class="label">Hora</label>
+              <input type="time" name="match_time" value="{{ g.match_datetime.strftime('%H:%M') }}" class="input-field w-28" />
+            </div>
+            <button type="submit" class="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition text-sm">
+              Editar
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="bg-dark-700 rounded-2xl border border-dark-500 p-8 text-center text-gray-400">Nenhum jogo cadastrado.</div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <!-- ── GERENCIAR USUÁRIOS ── -->
+  <section>
+    <h2 class="text-lg font-black text-white mb-3 flex items-center gap-2"><span>👥</span> Gerenciar Usuários</h2>
+    <div class="bg-dark-700 rounded-2xl border border-dark-500 overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b border-dark-500">
+            <th class="px-4 py-3 text-left text-gray-400 font-semibold">#</th>
+            <th class="px-4 py-3 text-left text-gray-400 font-semibold">Jogador</th>
+            <th class="px-4 py-3 text-center text-gray-400 font-semibold">Pontos</th>
+            <th class="px-4 py-3 text-right text-gray-400 font-semibold">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr class="border-b border-dark-600 last:border-0 hover:bg-dark-600/40 transition">
+            <td class="px-4 py-3 text-gray-500">{{ loop.index }}</td>
+            <td class="px-4 py-3 font-semibold text-white">{{ u.username }}</td>
+            <td class="px-4 py-3">
+              <form method="POST" action="{{ url_for('admin_update_points') }}" class="flex items-center justify-center gap-2">
+                <input type="hidden" name="user_id" value="{{ u.id }}" />
+                <div class="flex flex-col items-center gap-1">
+                  <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Definir pontos exatos</span>
+                  <div class="flex items-center gap-2">
+                    <input type="number" name="points" value="{{ u.total_points }}" min="0"
+                      class="input-field w-20 text-center text-brand-400 font-black text-lg border-brand-500/30" />
+                    <button type="submit" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg transition text-xs whitespace-nowrap">
+                      Definir Pontos
+                    </button>
+                  </div>
+                  <span class="text-[10px] text-gray-600">Substitui a pontuação atual</span>
+                </div>
+              </form>
+            </td>
+            <td class="px-4 py-3 text-right">
+              <form method="POST" action="{{ url_for('admin_delete_user') }}"
+                onsubmit="return confirm('Excluir {{ u.username }} permanentemente?')">
+                <input type="hidden" name="user_id" value="{{ u.id }}" />
+                <button type="submit" class="px-3 py-1.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg transition text-xs">
+                  Excluir Usuário
+                </button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">Nenhum usuário cadastrado.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<style>
+  .label { display: block; font-size: 0.7rem; font-weight: 600; color: #6b7280; margin-bottom: 0.3rem; }
+  .input-field {
+    display: block; width: 100%;
+    padding: 0.45rem 0.65rem;
+    background: #1a1a25; border: 1px solid #2e2e42;
+    color: #fff; border-radius: 0.6rem; font-size: 0.8rem;
+  }
+  .input-field:focus { outline: none; border-color: #f59e0b; }
+</style>
+{% endblock %}
