@@ -24,36 +24,49 @@ db = SQLAlchemy(app)
 BRASILIA_TZ = pytz.timezone('America/Sao_Paulo')
 ADMIN_PASSWORD = 'admin123'
 
-# ─── Models ───────────────────────────────────────────────────────────────────
+# --- NOVOS MODELOS DO BANCO DE DADOS ---
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
-    total_points = db.Column(db.Integer, default=0)
-    avatar_url = db.Column(db.String(500), nullable=True)
-    predictions = db.relationship('Prediction', backref='user', lazy=True, cascade='all, delete-orphan')
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(150), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False)
+    bio = db.Column(db.String(250), default="") # Nova Bio do perfil
+    avatar_url = db.Column(db.String(500), default="") # Link da foto de perfil
+    palpites = db.relationship('Palpite', backref='user', lazy=True)
 
-class Game(db.Model):
+class Campeonato(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    stage = db.Column(db.String(50), nullable=False, default='16avos')
-    home_team = db.Column(db.String(80), nullable=False)
-    away_team = db.Column(db.String(80), nullable=False)
-    home_flag = db.Column(db.String(20), nullable=False)
-    away_flag = db.Column(db.String(20), nullable=False)
-    match_datetime = db.Column(db.DateTime, nullable=False)
-    home_score = db.Column(db.Integer, nullable=True)
-    away_score = db.Column(db.Integer, nullable=True)
-    result_saved = db.Column(db.Boolean, default=False)
-    predictions = db.relationship('Prediction', backref='game', lazy=True, cascade='all, delete-orphan')
+    nome = db.Column(db.String(100), unique=True, nullable=False) # Ex: Brasileirão, Champions
+    rodadas = db.relationship('Rodada', backref='campeonato', lazy=True)
 
-class Prediction(db.Model):
+class Rodada(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    numero = db.Column(db.Integer, nullable=False) # Ex: Rodada 1, Rodada 2...
+    campeonato_id = db.Column(db.Integer, db.ForeignKey('campeonato.id'), nullable=False)
+    jogos = db.relationship('Jogo', backref='rodada', lazy=True)
+
+# Atualize a classe Jogo antiga para incluir a rodada_id
+class Jogo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    time_casa = db.Column(db.String(100), nullable=False)
+    time_fora = db.Column(db.String(100), nullable=False)
+    gols_casa = db.Column(db.Integer, nullable=True)
+    gols_fora = db.Column(db.Integer, nullable=True)
+    data_hora = db.Column(db.DateTime, nullable=False)
+    encerrado = db.Column(db.Boolean, default=False)
+    rodada_id = db.Column(db.Integer, db.ForeignKey('rodada.id'), nullable=False) # Vincula o jogo a uma rodada
+    palpites = db.relationship('Palpite', backref='jogo', lazy=True)
+
+# Atualize a classe Palpite antiga para guardar os pontos ganhos nela
+class Palpite(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    game_id = db.Column(db.Integer, db.ForeignKey('game.id'), nullable=False)
-    home_score = db.Column(db.Integer, nullable=True)
-    away_score = db.Column(db.Integer, nullable=True)
-    points = db.Column(db.Integer, default=0)
+    jogo_id = db.Column(db.Integer, db.ForeignKey('jogo.id'), nullable=False)
+    palpite_casa = db.Column(db.Integer, nullable=False)
+    palpite_fora = db.Column(db.Integer, nullable=False)
+    pontos_ganhos = db.Column(db.Integer, default=0) # Facilita o cálculo do ranking mensal e geral
+    data_cadastro = db.Column(db.DateTime, default=lambda: datetime.now(pytz.timezone('America/Sao_Paulo')))
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,13 +77,22 @@ def game_is_locked(game):
     match_dt = BRASILIA_TZ.localize(game.match_datetime) if game.match_datetime.tzinfo is None else game.match_datetime
     return now_brasilia() >= match_dt
 
-def calculate_points(pred_home, pred_away, real_home, real_away):
-    if pred_home == real_home and pred_away == real_away:
+def calcular_pontos_palpite(p_casa, p_fora, r_casa, r_fora):
+    if r_casa is None or r_fora is None:
+        return 0
+        
+    # 1. Acertou em cheio o placar exato -> 3 Pontos
+    if p_casa == r_casa and p_fora == r_fora:
         return 3
-    pred_winner = 'H' if pred_home > pred_away else ('A' if pred_away > pred_home else 'D')
-    real_winner = 'H' if real_home > real_away else ('A' if real_away > real_home else 'D')
-    if pred_winner == real_winner:
+        
+    # 2. Acertou apenas a tendência/resultado (Vencedor ou Empate) -> 1 Ponto
+    if r_casa == r_fora and p_casa == p_fora: # Era empate e palpitou empate
         return 1
+    if r_casa > r_fora and p_casa > p_fora: # Vitória do mandante
+        return 1
+    if r_casa < r_fora and p_casa < p_fora: # Vitória do visitante
+        return 1
+        
     return 0
 
 def get_ranking():
