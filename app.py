@@ -135,6 +135,34 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@app.route('/api/game_predictions/<int:game_id>')
+def game_predictions(game_id):
+    if 'user_id' not in session:
+        return jsonify({'error': 'Não autenticado'}), 401
+    
+    jogo = Jogo.query.get(game_id)
+    if not jogo:
+        return jsonify({'error': 'Jogo não encontrado'}), 404
+        
+    if not game_is_locked(jogo):
+        return jsonify({'error': 'Jogo ainda aberto para palpites'}), 403
+        
+    users = User.query.all()
+    result = []
+    
+    # Mapeia os palpites existentes para este jogo
+    pred_map = {p.user_id: p for p in jogo.palpites}
+    
+    for u in sorted(users, key=lambda x: x.username.lower()):
+        p = pred_map.get(u.id)
+        result.append({
+            'username': u.username,
+            'avatar_url': u.avatar_url or '',
+            'home_score': p.palpite_casa if p else None,
+            'away_score': p.palpite_fora if p else None,
+        })
+    return jsonify(result)
+
 @app.route('/perfil', methods=['GET', 'POST'])
 def perfil():
     if 'user_id' not in session:
