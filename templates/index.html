@@ -1,346 +1,39 @@
 {% extends 'base.html' %}
 {% block content %}
-
-{% macro m_render_game_card(entry) %}
-{% set g = entry.game %}
-{% set pred = entry.pred %}
-{% set locked = entry.locked %}
-<div class="bg-dark-700 rounded-2xl border {% if locked %}border-dark-600{% else %}border-dark-500{% endif %} p-4 sm:p-5 transition mb-3">
-
-  <div class="flex items-center justify-between mb-4">
-    <span class="text-xs text-gray-500 font-medium">{{ entry.match_dt_formatted }} - R{{ g.rodada.numero }}</span>
-    <div class="flex items-center gap-2">
-      {% if g.encerrado %}
-        <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">Encerrado</span>
-      {% endif %}
-      {% if locked %}
-        <span class="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full font-semibold">🔒 Bloqueado</span>
-      {% else %}
-        <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">Aberto</span>
-      {% endif %}
-    </div>
-  </div>
-
-  <form method="POST" action="/">
-    <input type="hidden" name="game_id" value="{{ g.id }}" />
-
-    <div class="flex items-center gap-2 sm:gap-3 justify-center">
-      <div class="flex-1 flex flex-col sm:flex-row items-center sm:justify-end gap-2">
-        <span class="font-bold text-sm sm:text-base text-white text-center sm:text-right leading-tight">{{ g.time_casa }}</span>
-      </div>
-
-      <div class="flex items-center gap-1.5 flex-shrink-0">
-        {% if locked %}
-          <div class="score-box {% if pred and pred.palpite_casa is not none %}score-filled{% else %}score-empty{% endif %}">
-            {{ pred.palpite_casa if pred and pred.palpite_casa is not none else '–' }}
-          </div>
-          <span class="text-dark-400 font-black text-xl px-0.5">×</span>
-          <div class="score-box {% if pred and pred.palpite_fora is not none %}score-filled{% else %}score-empty{% endif %}">
-            {{ pred.palpite_fora if pred and pred.palpite_fora is not none else '–' }}
-          </div>
-        {% else %}
-          <input type="number" name="home_score" min="0" max="99"
-            value="{{ pred.palpite_casa if pred and pred.palpite_casa is not none else '' }}"
-            class="score-input-lg" placeholder="–" />
-          <span class="text-gray-500 font-black text-xl px-0.5">×</span>
-          <input type="number" name="away_score" min="0" max="99"
-            value="{{ pred.palpite_fora if pred and pred.palpite_fora is not none else '' }}"
-            class="score-input-lg" placeholder="–" />
-        {% endif %}
-      </div>
-
-      <div class="flex-1 flex flex-col sm:flex-row items-center sm:justify-start gap-2">
-        <span class="font-bold text-sm sm:text-base text-white text-center sm:text-left leading-tight">{{ g.time_fora }}</span>
-      </div>
+<div class="min-h-[80vh] flex items-center justify-center px-4">
+  <div class="bg-dark-700 rounded-2xl border border-dark-500 p-6 sm:p-8 w-full max-w-md shadow-2xl text-center space-y-6">
+    
+    <div>
+      <span class="text-4xl">🔒</span>
+      <h2 class="text-xl font-black text-white mt-3">Área Restrita</h2>
+      <p class="text-xs text-gray-500 mt-1">Insira a senha mestra para gerenciar a Copa Peteleco</p>
     </div>
 
-    {% if g.encerrado %}
-    <div class="mt-4 rounded-xl py-3 px-4 flex flex-col sm:flex-row items-center justify-center gap-2
-      {% if pred and pred.palpite_casa is not none %}
-        {% if pred.pontos_ganhos == 3 %}bg-yellow-400/10 border border-yellow-400/30
-        {% elif pred.pontos_ganhos == 1 %}bg-blue-500/10 border border-blue-500/30
-        {% else %}bg-red-500/10 border border-red-500/25{% endif %}
-      {% else %}bg-dark-600 border border-dark-500{% endif %}">
-      <div class="flex items-center gap-2">
-        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Placar Oficial</span>
-        <span class="text-2xl font-black text-white tracking-tight">{{ g.gols_casa }} × {{ g.gols_fora }}</span>
+    {% if error %}
+      <div class="bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-semibold py-2.5 px-3 rounded-xl">
+        ⚠️ {{ error }}
       </div>
-      {% if pred and pred.palpite_casa is not none %}
-      <div class="flex items-center gap-1.5">
-        <span class="text-xs text-gray-500">Seu palpite:</span>
-        <span class="text-sm font-bold text-gray-300">{{ pred.palpite_casa }} × {{ pred.palpite_fora }}</span>
-        <span class="text-sm font-black px-2 py-0.5 rounded-full
-          {% if pred.pontos_ganhos == 3 %}text-yellow-400 bg-yellow-400/15
-          {% elif pred.pontos_ganhos == 1 %}text-blue-400 bg-blue-400/15
-          {% else %}text-red-400 bg-red-400/15{% endif %}">
-          {% if pred.pontos_ganhos == 3 %}⭐ +3 pts
-          {% elif pred.pontos_ganhos == 1 %}✓ +1 pt
-          {% else %}✗ 0 pts{% endif %}
-        </span>
-      </div>
-      {% endif %}
-    </div>
     {% endif %}
 
-    {% if not locked %}
-    <div class="mt-4 flex justify-center">
-      <button type="submit"
-        class="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold text-sm rounded-xl transition">
-        Salvar Palpite
-      </button>
-    </div>
-    {% endif %}
-  </form>
-
-  {% if locked %}
-  <div class="mt-3 flex justify-center">
-    <button onclick="verGalera({{ g.id }}, '{{ g.time_casa }}', '{{ g.time_fora }}')"
-      class="text-xs text-gray-500 hover:text-brand-400 transition flex items-center gap-1.5 py-1 px-3 rounded-lg hover:bg-dark-600">
-      <span>👁️</span> Ver palpites da galera
-    </button>
-  </div>
-  {% endif %}
-
-</div>
-{% endmacro %}
-
-
-<nav class="sticky top-0 z-40 bg-dark-800/95 backdrop-blur border-b border-dark-600">
-  <div class="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <span class="text-xl">⚽</span>
-      <span class="font-black text-white text-lg tracking-tight">Copa <span class="text-brand-400">Peteleco</span></span>
-      <span class="hidden sm:inline text-xs text-gray-500 font-medium ml-1">2026</span>
-    </div>
-    <div class="flex items-center gap-1 sm:gap-2">
-      <a href="/" class="px-3 py-1.5 text-sm font-semibold text-gray-300 hover:text-brand-400 hover:bg-dark-600 rounded-lg transition">
-        Meus Palpites
-      </a>
-      <a href="{{ url_for('perfil') }}" class="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-300 hover:text-brand-400 hover:bg-dark-600 rounded-lg transition">
-        {% if user.avatar_url %}
-          <img src="{{ user.avatar_url }}" class="w-5 h-5 rounded-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='inline'" />
-          <span style="display:none">👤</span>
-        {% else %}
-          👤
-        {% endif %}
-        <span class="hidden sm:inline">Meu Perfil</span>
-      </a>
-      <a href="{{ url_for('admin') }}" class="px-3 py-1.5 text-sm font-semibold text-gray-300 hover:text-brand-400 hover:bg-dark-600 rounded-lg transition">
-        ⚙️ Admin
-      </a>
-      <a href="{{ url_for('logout') }}" class="px-3 py-1.5 text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-dark-600 rounded-lg transition">
-        Sair
-      </a>
-    </div>
-  </div>
-</nav>
-
-<div class="max-w-5xl mx-auto px-4 py-6 space-y-6">
-
-  <section>
-    <div class="flex items-center gap-2 mb-3">
-      <span class="text-brand-400 text-lg">🏆</span>
-      <h2 class="text-lg font-black text-white tracking-tight">Ranking Geral</h2>
-    </div>
-    <div class="bg-dark-700 rounded-2xl border border-dark-500 overflow-hidden">
-      <table class="w-full text-sm">
-        <thead>
-          <tr class="border-b border-dark-500">
-            <th class="px-4 py-3 text-left text-gray-400 font-semibold w-12">#</th>
-            <th class="px-4 py-3 text-left text-gray-400 font-semibold">Jogador</th>
-            <th class="px-4 py-3 text-right text-gray-400 font-semibold">Pontos</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for item in ranking %}
-          <tr class="border-b border-dark-600 last:border-0 {% if item.user.id == user.id %}bg-brand-500/5{% endif %} hover:bg-dark-600/50 transition">
-            <td class="px-4 py-3">
-              {% if loop.index == 1 %}
-                <span class="text-yellow-400 font-black">🥇</span>
-              {% elif loop.index == 2 %}
-                <span class="text-gray-300 font-black">🥈</span>
-              {% elif loop.index == 3 %}
-                <span class="text-amber-600 font-black">🥉</span>
-              {% else %}
-                <span class="text-gray-500 font-semibold">{{ loop.index }}</span>
-              {% endif %}
-            </td>
-            <td class="px-4 py-3">
-              <span class="font-semibold {% if item.user.id == user.id %}text-brand-400{% else %}text-white{% endif %}">
-                {{ item.user.username }}
-              </span>
-              {% if item.user.id == user.id %}<span class="ml-1.5 text-xs text-gray-500">(você)</span>{% endif %}
-            </td>
-            <td class="px-4 py-3 text-right">
-              <span class="font-black text-base {% if item.user.id == user.id %}text-brand-400{% else %}text-white{% endif %}">
-                {{ item.total_points }}
-              </span>
-              <span class="text-gray-500 text-xs ml-1">pts</span>
-            </td>
-          </tr>
-          {% else %}
-          <tr><td colspan="3" class="px-4 py-6 text-center text-gray-500">Nenhum jogador ainda.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <section>
-    <div class="flex items-center gap-2 mb-3">
-      <span class="text-green-400 text-lg">🎯</span>
-      <h2 class="text-lg font-black text-white tracking-tight">Palpites</h2>
-    </div>
-
-    <div class="flex gap-1 sm:gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
-      <button onclick="switchTab('brasileirao')" id="tab-btn-brasileirao" class="tab-btn active flex-shrink-0 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-dark-500 text-white border-gray-500 transition whitespace-nowrap">
-        Brasileirão (Rodada 19+)
-      </button>
-      <button onclick="switchTab('libertadores')" id="tab-btn-libertadores" class="tab-btn flex-shrink-0 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-dark-500 text-gray-400 hover:text-white hover:border-gray-500 transition whitespace-nowrap">
-        Libertadores (Oitavas+)
-      </button>
-    </div>
-
-    <div id="tab-brasileirao" class="tab-content">
-      {% if not brasileirao %}
-        <div class="bg-dark-700 rounded-2xl border border-dark-500 p-10 text-center">
-          <div class="text-4xl mb-3">📭</div>
-          <p class="text-gray-400 font-medium">Nenhum jogo do Brasileirão disponível ainda.</p>
-        </div>
-      {% else %}
-        <div class="space-y-3">
-          {% for entry in brasileirao %}
-            {{ m_render_game_card(entry) }}
-          {% endfor %}
-        </div>
-      {% endif %}
-    </div>
-
-    <div id="tab-libertadores" class="tab-content hidden">
-      {% if not libertadores %}
-        <div class="bg-dark-700 rounded-2xl border border-dark-500 p-10 text-center">
-          <div class="text-4xl mb-3">📭</div>
-          <p class="text-gray-400 font-medium">Nenhum jogo da Libertadores disponível ainda.</p>
-        </div>
-      {% else %}
-        <div class="space-y-3">
-          {% for entry in libertadores %}
-            {{ m_render_game_card(entry) }}
-          {% endfor %}
-        </div>
-      {% endif %}
-    </div>
-  </section>
-
-  <div class="bg-dark-700 rounded-xl border border-dark-600 p-4">
-    <p class="text-xs text-gray-500 text-center">
-      <span class="text-yellow-400 font-bold">⭐ 3 pts</span> placar exato &nbsp;·&nbsp;
-      <span class="text-blue-400 font-bold">✓ 1 pt</span> acertou o vencedor ou empate &nbsp;·&nbsp;
-      <span class="text-red-400 font-bold">✗ 0 pts</span> errou
-    </p>
-  </div>
-
-</div>
-
-<div id="galera-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-  <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="fecharModal()"></div>
-  <div class="relative bg-dark-700 rounded-2xl border border-dark-500 shadow-2xl w-full max-w-sm max-h-[80vh] flex flex-col">
-    <div class="flex items-center justify-between px-5 py-4 border-b border-dark-600">
+    <form method="POST" action="{{ url_for('admin') }}" class="space-y-4">
+      <input type="hidden" name="action" value="admin_login" />
+      
       <div>
-        <h3 class="font-black text-white text-base" id="modal-title">Palpites da Galera</h3>
-        <p class="text-xs text-gray-500 mt-0.5" id="modal-subtitle"></p>
+        <input type="password" name="admin_password" required autofocus
+          placeholder="Digite a senha do administrador" 
+          class="w-full px-4 py-3 bg-dark-800 border border-dark-600 rounded-xl text-white text-center font-bold placeholder-gray-600 focus:outline-none focus:border-brand-400 transition" />
       </div>
-      <button onclick="fecharModal()" class="text-gray-500 hover:text-white transition text-lg leading-none">✕</button>
-    </div>
-    <div id="modal-body" class="overflow-y-auto flex-1 p-4 space-y-2">
-      <p class="text-center text-gray-500 text-sm py-6">Carregando...</p>
-    </div>
+
+      <button type="submit" 
+        class="w-full py-3 bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold rounded-xl transition shadow-lg text-sm">
+        Entrar no Painel
+      </button>
+    </form>
+
+    <a href="{{ url_for('index') }}" class="inline-block text-xs text-gray-500 hover:text-gray-400 transition">
+      ← Voltar para os Palpites
+    </a>
+
   </div>
 </div>
-
-<style>
-  .score-box {
-    width: 3.2rem; height: 3.2rem;
-    display: flex; align-items: center; justify-content: center;
-    border-radius: 0.75rem; font-size: 1.5rem; font-weight: 900;
-    border: 2px solid #2e2e42;
-  }
-  .score-filled { background: #1a1a25; color: #fff; border-color: #3d3d55; }
-  .score-empty  { background: #111118; color: #4b5563; border-color: #1f1f2e; }
-
-  .score-input-lg {
-    width: 3.2rem; height: 3.2rem; text-align: center;
-    background: #1a1a25; border: 2px solid #2e2e42;
-    color: #fff; border-radius: 0.75rem;
-    font-size: 1.5rem; font-weight: 900;
-  }
-  .score-input-lg:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
-  .tab-content.hidden { display: none; }
-</style>
-
-<script>
-function switchTab(key) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active', 'text-white', 'border-gray-500'));
-  
-  const activeTab = document.getElementById('tab-' + key);
-  if (activeTab) activeTab.classList.remove('hidden');
-  
-  const activeBtn = document.getElementById('tab-btn-' + key);
-  if (activeBtn) activeBtn.classList.add('active', 'text-white', 'border-gray-500');
-}
-
-function fecharModal() {
-  document.getElementById('galera-modal').classList.add('hidden');
-}
-
-async function verGalera(gameId, homeTeam, awayTeam) {
-  const modal = document.getElementById('galera-modal');
-  const body  = document.getElementById('modal-body');
-  const title = document.getElementById('modal-title');
-  const sub   = document.getElementById('modal-subtitle');
-
-  title.textContent = 'Palpites da Galera';
-  sub.textContent   = homeTeam + ' × ' + awayTeam;
-  body.innerHTML    = '<p class="text-center text-gray-500 text-sm py-6">Carregando...</p>';
-  modal.classList.remove('hidden');
-
-  try {
-    const res  = await fetch('/api/game_predictions/' + gameId);
-    const data = await res.json();
-
-    if (!res.ok) {
-      body.innerHTML = '<p class="text-center text-red-400 text-sm py-6">' + (data.error || 'Erro ao carregar.') + '</p>';
-      return;
-    }
-
-    if (data.length === 0) {
-      body.innerHTML = '<p class="text-center text-gray-500 text-sm py-6">Nenhum palpite registrado.</p>';
-      return;
-    }
-
-    body.innerHTML = data.map(p => {
-      const hasPred = p.home_score !== null && p.away_score !== null;
-      const score   = hasPred ? (p.home_score + ' × ' + p.away_score) : '–';
-      const scoreClass = hasPred ? 'text-white font-black' : 'text-gray-600';
-      const avatar  = p.avatar_url
-        ? `<img src="${p.avatar_url}" class="w-7 h-7 rounded-full object-cover flex-shrink-0"
-               onerror="this.outerHTML='<div class=\\'w-7 h-7 rounded-full bg-dark-500 flex items-center justify-center text-sm flex-shrink-0\\'>👤</div>'"/>`
-        : `<div class="w-7 h-7 rounded-full bg-dark-500 flex items-center justify-center text-sm flex-shrink-0">👤</div>`;
-      return `
-        <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-dark-600 hover:bg-dark-500 transition">
-          ${avatar}
-          <span class="flex-1 text-sm font-semibold text-gray-200 truncate">${p.username}</span>
-          <span class="text-base ${scoreClass} tracking-wide">${score}</span>
-        </div>`;
-    }).join('');
-
-  } catch (e) {
-    body.innerHTML = '<p class="text-center text-red-400 text-sm py-6">Erro de conexão.</p>';
-  }
-}
-
-document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharModal(); });
-</script>
-
 {% endblock %}
