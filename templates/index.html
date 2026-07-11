@@ -2,15 +2,13 @@
 {% block content %}
 
 {% macro m_render_game_card(entry) %}
-{% set g = entry.game %}
-{% set pred = entry.pred %}
 {% set locked = entry.locked %}
 <div class="bg-dark-700 rounded-2xl border {% if locked %}border-dark-600{% else %}border-dark-500{% endif %} p-4 sm:p-5 transition mb-3">
 
   <div class="flex items-center justify-between mb-4">
-    <span class="text-xs text-gray-500 font-medium">{{ entry.match_dt_formatted }} - R{{ g.rodada.numero }}</span>
+    <span class="text-xs text-gray-500 font-medium">{{ entry.match_dt_formatted }} - R{{ entry.rodada.numero if entry.rodada else '' }}</span>
     <div class="flex items-center gap-2">
-      {% if g.encerrado %}
+      {% if entry.encerrado %}
         <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">Encerrado</span>
       {% endif %}
       {% if locked %}
@@ -22,59 +20,59 @@
   </div>
 
   <form method="POST" action="/">
-    <input type="hidden" name="game_id" value="{{ g.id }}" />
+    <input type="hidden" name="game_id" value="{{ entry.id }}" />
 
     <div class="flex items-center gap-2 sm:gap-3 justify-center">
       <div class="flex-1 flex flex-col sm:flex-row items-center sm:justify-end gap-2">
-        <span class="font-bold text-sm sm:text-base text-white text-center sm:text-right leading-tight">{{ g.time_casa }}</span>
+        <span class="font-bold text-sm sm:text-base text-white text-center sm:text-right leading-tight">{{ entry.time_casa }}</span>
       </div>
 
       <div class="flex items-center gap-1.5 flex-shrink-0">
         {% if locked %}
-          <div class="score-box {% if pred and pred.palpite_casa is not none %}score-filled{% else %}score-empty{% endif %}">
-            {{ pred.palpite_casa if pred and pred.palpite_casa is not none else '–' }}
+          <div class="score-box {% if entry.pred and entry.pred.palpite_casa is not none %}score-filled{% else %}score-empty{% endif %}">
+            {{ entry.pred.palpite_casa if entry.pred and entry.pred.palpite_casa is not none else '–' }}
           </div>
           <span class="text-dark-400 font-black text-xl px-0.5">×</span>
-          <div class="score-box {% if pred and pred.palpite_fora is not none %}score-filled{% else %}score-empty{% endif %}">
-            {{ pred.palpite_fora if pred and pred.palpite_fora is not none else '–' }}
+          <div class="score-box {% if entry.pred and entry.pred.palpite_fora is not none %}score-filled{% else %}score-empty{% endif %}">
+            {{ entry.pred.palpite_fora if entry.pred and entry.pred.palpite_fora is not none else '–' }}
           </div>
         {% else %}
           <input type="number" name="home_score" min="0" max="99"
-            value="{{ pred.palpite_casa if pred and pred.palpite_casa is not none else '' }}"
+            value="{{ entry.pred.palpite_casa if entry.pred and entry.pred.palpite_casa is not none else '' }}"
             class="score-input-lg" placeholder="–" />
           <span class="text-gray-500 font-black text-xl px-0.5">×</span>
           <input type="number" name="away_score" min="0" max="99"
-            value="{{ pred.palpite_fora if pred and pred.palpite_fora is not none else '' }}"
+            value="{{ entry.pred.palpite_fora if entry.pred and entry.pred.palpite_fora is not none else '' }}"
             class="score-input-lg" placeholder="–" />
         {% endif %}
       </div>
 
       <div class="flex-1 flex flex-col sm:flex-row items-center sm:justify-start gap-2">
-        <span class="font-bold text-sm sm:text-base text-white text-center sm:text-left leading-tight">{{ g.time_fora }}</span>
+        <span class="font-bold text-sm sm:text-base text-white text-center sm:text-left leading-tight">{{ entry.time_fora }}</span>
       </div>
     </div>
 
-    {% if g.encerrado %}
+    {% if entry.encerrado %}
     <div class="mt-4 rounded-xl py-3 px-4 flex flex-col sm:flex-row items-center justify-center gap-2
-      {% if pred and pred.palpite_casa is not none %}
-        {% if pred.pontos_ganhos == 3 %}bg-yellow-400/10 border border-yellow-400/30
-        {% elif pred.pontos_ganhos == 1 %}bg-blue-500/10 border border-blue-500/30
+      {% if entry.pred and entry.pred.palpite_casa is not none %}
+        {% if entry.pred.pontos_ganhos == 3 %}bg-yellow-400/10 border border-yellow-400/30
+        {% elif entry.pred.pontos_ganhos == 1 %}bg-blue-500/10 border border-blue-500/30
         {% else %}bg-red-500/10 border border-red-500/25{% endif %}
       {% else %}bg-dark-600 border border-dark-500{% endif %}">
       <div class="flex items-center gap-2">
         <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Placar Oficial</span>
-        <span class="text-2xl font-black text-white tracking-tight">{{ g.gols_casa }} × {{ g.gols_fora }}</span>
+        <span class="text-2xl font-black text-white tracking-tight">{{ entry.gols_casa }} × {{ entry.gols_fora }}</span>
       </div>
-      {% if pred and pred.palpite_casa is not none %}
+      {% if entry.pred and entry.pred.palpite_casa is not none %}
       <div class="flex items-center gap-1.5">
         <span class="text-xs text-gray-500">Seu palpite:</span>
-        <span class="text-sm font-bold text-gray-300">{{ pred.palpite_casa }} × {{ pred.palpite_fora }}</span>
+        <span class="text-sm font-bold text-gray-300">{{ entry.pred.palpite_casa }} × {{ entry.pred.palpite_fora }}</span>
         <span class="text-sm font-black px-2 py-0.5 rounded-full
-          {% if pred.pontos_ganhos == 3 %}text-yellow-400 bg-yellow-400/15
-          {% elif pred.pontos_ganhos == 1 %}text-blue-400 bg-blue-400/15
+          {% if entry.pred.pontos_ganhos == 3 %}text-yellow-400 bg-yellow-400/15
+          {% elif entry.pred.pontos_ganhos == 1 %}text-blue-400 bg-blue-400/15
           {% else %}text-red-400 bg-red-400/15{% endif %}">
-          {% if pred.pontos_ganhos == 3 %}⭐ +3 pts
-          {% elif pred.pontos_ganhos == 1 %}✓ +1 pt
+          {% if entry.pred.pontos_ganhos == 3 %}⭐ +3 pts
+          {% elif entry.pred.pontos_ganhos == 1 %}✓ +1 pt
           {% else %}✗ 0 pts{% endif %}
         </span>
       </div>
@@ -94,7 +92,7 @@
 
   {% if locked %}
   <div class="mt-3 flex justify-center">
-    <button onclick="verGalera({{ g.id }}, '{{ g.time_casa }}', '{{ g.time_fora }}')"
+    <button onclick="verGalera({{ entry.id }}, '{{ entry.time_casa }}', '{{ entry.time_fora }}')"
       class="text-xs text-gray-500 hover:text-brand-400 transition flex items-center gap-1.5 py-1 px-3 rounded-lg hover:bg-dark-600">
       <span>👁️</span> Ver palpites da galera
     </button>
