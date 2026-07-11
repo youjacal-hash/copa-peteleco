@@ -230,13 +230,18 @@ def index():
             flash('Palpite salvo!', 'success')
         return redirect(url_for('index'))
 
-    # Coleta de jogos filtrados para Brasileirão e Libertadores
+    # Import necessário para forçar o carregamento imediato das relações
+    from sqlalchemy.orm import joinedload
+
+    # Coleta de jogos trazendo a Rodada e o Campeonato direto na mesma consulta do banco
     jogos_brasileirao = Jogo.query.join(Rodada).join(Campeonato)\
+        .options(joinedload(Jogo.rodada).joinedload(Rodada.campeonato))\
         .filter(Campeonato.name == 'Brasileirão')\
         .filter(Rodada.numero >= 19)\
         .order_by(Rodada.numero, Jogo.data_hora).all()
 
     jogos_libertadores = Jogo.query.join(Rodada).join(Campeonato)\
+        .options(joinedload(Jogo.rodada).joinedload(Rodada.campeonato))\
         .filter(Campeonato.name == 'Libertadores')\
         .order_by(Rodada.numero, Jogo.data_hora).all()
 
@@ -246,6 +251,10 @@ def index():
         enriched = []
         for g in games_list:
             match_dt_brt = BRASILIA_TZ.localize(g.data_hora) if g.data_hora.tzinfo is None else g.data_hora
+            
+            # Buscando o número da rodada com segurança enquanto a sessão está ativa
+            num_rodada = g.rodada.numero if g.rodada else 0
+            
             enriched.append({
                 'id': g.id,
                 'time_casa': g.time_casa,
@@ -253,7 +262,7 @@ def index():
                 'gols_casa': g.gols_casa,
                 'gols_fora': g.gols_fora,
                 'encerrado': g.encerrado,
-                'rodada': g.rodada,
+                'rodada_numero': num_rodada, 
                 'pred': user_preds.get(g.id),
                 'locked': game_is_locked(g),
                 'match_dt_formatted': match_dt_brt.strftime('%d/%m às %H:%M'),
