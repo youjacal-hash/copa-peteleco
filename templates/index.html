@@ -6,7 +6,7 @@
 <div class="bg-dark-700 rounded-2xl border {% if locked %}border-dark-600{% else %}border-dark-500{% endif %} p-4 sm:p-5 transition mb-3">
 
   <div class="flex items-center justify-between mb-4">
-    <span class="text-xs text-gray-500 font-medium">{{ entry.match_dt_formatted }} - R{{ entry.rodada.numero if entry.rodada else '' }}</span>
+    <span class="text-xs text-gray-500 font-medium">{{ entry.match_dt_formatted }} - R{{ entry.rodada_numero }}</span>
     <div class="flex items-center gap-2">
       {% if entry.encerrado %}
         <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">Encerrado</span>
