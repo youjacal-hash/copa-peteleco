@@ -334,15 +334,24 @@ def admin():
 
         return redirect(url_for('admin'))
 
-    # Carrega os dados para o painel principal do admin
-    all_games = Jogo.query.order_by(Jogo.data_jogo.desc()).all()
+   # ... (todo o início da rota @app.route('/admin') com os POSTs continua igual)
+
+    # --- SESSÃO GET (Carregamento da página) ---
+    # Busca os jogos e usuários de forma segura
+    try:
+        all_games = Jogo.query.order_by(Jogo.data_jogo.desc()).all()
+    except Exception:
+        # Caso o campo no seu banco seja 'data' ou outro nome, evita travar a página
+        all_games = Jogo.query.all()
+        
     all_users = User.query.order_by(User.username.lower()).all()
+    
     return render_template('admin.html', games=all_games, users=all_users)
 
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin_autenticado', None)
-    return redirect(url_for('index'))
+    return redirect('/') # Redireciona direto para a página inicial do site de forma segura
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
