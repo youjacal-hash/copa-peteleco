@@ -328,7 +328,7 @@ def admin():
                 jogo.gols_fora = int(gols_fora)
                 jogo.encerrado = True
                 db.session.commit()
-                atualizar_points_do_jogo(jogo)
+                atualizar_pontos_do_jogo(jogo)
                 
         elif action == 'delete_game':
             game_id = request.form.get('game_id')
