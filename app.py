@@ -260,7 +260,7 @@ def index():
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     # Define a sua senha mestra aqui (mude para a senha que você quiser!)
-    SENHA_MESTRA = peteleco2026
+    SENHA_MESTRA = "peteleco2026"
 
     # Se o administrador ainda não digitou a senha nesta sessão, mostra a tela de login do admin
     if not session.get('admin_autenticado'):
