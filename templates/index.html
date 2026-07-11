@@ -50,8 +50,8 @@
           </tr>
         </thead>
         <tbody>
-          {% for u in ranking %}
-          <tr class="border-b border-dark-600 last:border-0 {% if u.id == user.id %}bg-brand-500/5{% endif %} hover:bg-dark-600/50 transition">
+          {% for item in ranking %}
+          <tr class="border-b border-dark-600 last:border-0 {% if item.user.id == user.id %}bg-brand-500/5{% endif %} hover:bg-dark-600/50 transition">
             <td class="px-4 py-3">
               {% if loop.index == 1 %}
                 <span class="text-yellow-400 font-black">🥇</span>
@@ -59,19 +59,20 @@
                 <span class="text-gray-300 font-black">🥈</span>
               {% elif loop.index == 3 %}
                 <span class="text-amber-600 font-black">🥉</span>
+              {% edit %}
               {% else %}
                 <span class="text-gray-500 font-semibold">{{ loop.index }}</span>
               {% endif %}
             </td>
             <td class="px-4 py-3">
-              <span class="font-semibold {% if u.id == user.id %}text-brand-400{% else %}text-white{% endif %}">
-                {{ u.username }}
+              <span class="font-semibold {% if item.user.id == user.id %}text-brand-400{% else %}text-white{% endif %}">
+                {{ item.user.username }}
               </span>
-              {% if u.id == user.id %}<span class="ml-1.5 text-xs text-gray-500">(você)</span>{% endif %}
+              {% if item.user.id == user.id %}<span class="ml-1.5 text-xs text-gray-500">(você)</span>{% endif %}
             </td>
             <td class="px-4 py-3 text-right">
-              <span class="font-black text-base {% if u.id == user.id %}text-brand-400{% else %}text-white{% endif %}">
-                {{ u.total_points }}
+              <span class="font-black text-base {% if item.user.id == user.id %}text-brand-400{% else %}text-white{% endif %}">
+                {{ item.total_points }}
               </span>
               <span class="text-gray-500 text-xs ml-1">pts</span>
             </td>
@@ -93,149 +94,45 @@
 
     <!-- Tab buttons -->
     <div class="flex gap-1 sm:gap-2 overflow-x-auto pb-1 mb-4 scrollbar-hide">
-      {% for stage_key, stage_name in stages.items() %}
-      <button
-        onclick="switchTab('{{ stage_key }}')"
-        id="tab-btn-{{ stage_key }}"
-        class="tab-btn flex-shrink-0 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-dark-500 text-gray-400 hover:text-white hover:border-gray-500 transition whitespace-nowrap
-               {% if loop.first %}active{% endif %}">
-        {{ stage_name }}
+      <button onclick="switchTab('brasileirao')" id="tab-btn-brasileirao" class="tab-btn active flex-shrink-0 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-dark-500 text-gray-400 hover:text-white hover:border-gray-500 transition whitespace-nowrap">
+        Brasileirão (Rodada 19+)
       </button>
-      {% endfor %}
+      <button onclick="switchTab('libertadores')" id="tab-btn-libertadores" class="tab-btn flex-shrink-0 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-xl border border-dark-500 text-gray-400 hover:text-white hover:border-gray-500 transition whitespace-nowrap">
+        Libertadores (Oitavas+)
+      </button>
     </div>
 
-    <!-- Tab contents -->
-    {% for stage_key, stage_name in stages.items() %}
-    <div id="tab-{{ stage_key }}" class="tab-content {% if loop.first %}active{% endif %}">
-      {% set games_list = games_by_stage[stage_key] %}
-      {% if not games_list %}
+    <!-- Tab contents: BRASILEIRÃO -->
+    <div id="tab-brasileirao" class="tab-content active">
+      {% if not brasileirao %}
         <div class="bg-dark-700 rounded-2xl border border-dark-500 p-10 text-center">
           <div class="text-4xl mb-3">📭</div>
-          <p class="text-gray-400 font-medium">Nenhum jogo disponível ainda.</p>
-          <p class="text-gray-600 text-sm mt-1">O Admin vai adicionar os confrontos em breve.</p>
+          <p class="text-gray-400 font-medium">Nenhum jogo do Brasileirão disponível ainda.</p>
         </div>
       {% else %}
         <div class="space-y-3">
-          {% for entry in games_list %}
-          {% set g = entry.game %}
-          {% set pred = entry.pred %}
-          {% set locked = entry.locked %}
-          <div class="bg-dark-700 rounded-2xl border {% if locked %}border-dark-600{% else %}border-dark-500{% endif %} p-4 sm:p-5 transition">
-
-            <!-- Header row: date + status badges -->
-            <div class="flex items-center justify-between mb-4">
-              <span class="text-xs text-gray-500 font-medium">{{ entry.match_dt_formatted }}</span>
-              <div class="flex items-center gap-2">
-                {% if g.result_saved %}
-                  <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">Encerrado</span>
-                {% endif %}
-                {% if locked %}
-                  <span class="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full font-semibold">🔒 Bloqueado</span>
-                {% else %}
-                  <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">Aberto</span>
-                {% endif %}
-              </div>
-            </div>
-
-            <form method="POST" action="/">
-              <input type="hidden" name="game_id" value="{{ g.id }}" />
-
-              <!-- Match row: team — score — team -->
-              <div class="flex items-center gap-2 sm:gap-3">
-
-                <!-- Home team -->
-                <div class="flex-1 flex flex-col sm:flex-row items-center sm:justify-end gap-2">
-                  <span class="font-bold text-sm sm:text-base text-white order-2 sm:order-1 text-center sm:text-right leading-tight">{{ g.home_team }}</span>
-                  <img src="https://flagcdn.com/32x24/{{ g.home_flag }}.png" alt="{{ g.home_team }}"
-                       class="flag-img w-8 h-6 object-cover order-1 sm:order-2 flex-shrink-0" />
-                </div>
-
-                <!-- Score inputs / locked display -->
-                <div class="flex items-center gap-1.5 flex-shrink-0">
-                  {% if locked %}
-                    <!-- Locked: show filled score or dash, big and read-only -->
-                    <div class="score-box {% if pred and pred.home_score is not none %}score-filled{% else %}score-empty{% endif %}">
-                      {{ pred.home_score if pred and pred.home_score is not none else '–' }}
-                    </div>
-                    <span class="text-dark-400 font-black text-xl px-0.5">×</span>
-                    <div class="score-box {% if pred and pred.away_score is not none %}score-filled{% else %}score-empty{% endif %}">
-                      {{ pred.away_score if pred and pred.away_score is not none else '–' }}
-                    </div>
-                  {% else %}
-                    <input type="number" name="home_score" min="0" max="99"
-                      value="{{ pred.home_score if pred and pred.home_score is not none else '' }}"
-                      class="score-input-lg" placeholder="–" />
-                    <span class="text-gray-500 font-black text-xl px-0.5">×</span>
-                    <input type="number" name="away_score" min="0" max="99"
-                      value="{{ pred.away_score if pred and pred.away_score is not none else '' }}"
-                      class="score-input-lg" placeholder="–" />
-                  {% endif %}
-                </div>
-
-                <!-- Away team -->
-                <div class="flex-1 flex flex-col sm:flex-row items-center sm:justify-start gap-2">
-                  <img src="https://flagcdn.com/32x24/{{ g.away_flag }}.png" alt="{{ g.away_team }}"
-                       class="flag-img w-8 h-6 object-cover flex-shrink-0" />
-                  <span class="font-bold text-sm sm:text-base text-white text-center sm:text-left leading-tight">{{ g.away_team }}</span>
-                </div>
-              </div>
-
-              <!-- Official result block (when finished) -->
-              {% if g.result_saved %}
-              <div class="mt-4 rounded-xl py-3 px-4 flex flex-col sm:flex-row items-center justify-center gap-2
-                {% if pred and pred.home_score is not none %}
-                  {% if pred.points == 3 %}bg-yellow-400/10 border border-yellow-400/30
-                  {% elif pred.points == 1 %}bg-blue-500/10 border border-blue-500/30
-                  {% else %}bg-red-500/10 border border-red-500/25{% endif %}
-                {% else %}bg-dark-600 border border-dark-500{% endif %}">
-                <div class="flex items-center gap-2">
-                  <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Placar Oficial</span>
-                  <span class="text-2xl font-black text-white tracking-tight">{{ g.home_score }} × {{ g.away_score }}</span>
-                </div>
-                {% if pred and pred.home_score is not none %}
-                <div class="flex items-center gap-1.5">
-                  <span class="text-xs text-gray-500">Seu palpite:</span>
-                  <span class="text-sm font-bold text-gray-300">{{ pred.home_score }} × {{ pred.away_score }}</span>
-                  <span class="text-sm font-black px-2 py-0.5 rounded-full
-                    {% if pred.points == 3 %}text-yellow-400 bg-yellow-400/15
-                    {% elif pred.points == 1 %}text-blue-400 bg-blue-400/15
-                    {% else %}text-red-400 bg-red-400/15{% endif %}">
-                    {% if pred.points == 3 %}⭐ +3 pts
-                    {% elif pred.points == 1 %}✓ +1 pt
-                    {% else %}✗ 0 pts{% endif %}
-                  </span>
-                </div>
-                {% endif %}
-              </div>
-              {% endif %}
-
-              <!-- Save button (open games only) -->
-              {% if not locked %}
-              <div class="mt-4 flex justify-center">
-                <button type="submit"
-                  class="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold text-sm rounded-xl transition">
-                  Salvar Palpite
-                </button>
-              </div>
-              {% endif %}
-            </form>
-
-            <!-- Ver palpites da galera (only when locked or finished) -->
-            {% if locked %}
-            <div class="mt-3 flex justify-center">
-              <button onclick="verGalera({{ g.id }}, '{{ g.home_team }}', '{{ g.away_team }}')"
-                class="text-xs text-gray-500 hover:text-brand-400 transition flex items-center gap-1.5 py-1 px-3 rounded-lg hover:bg-dark-600">
-                <span>👁️</span> Ver palpites da galera
-              </button>
-            </div>
-            {% endif %}
-
-          </div>
+          {% for entry in brasileirao %}
+            {{ m_render_game_card(entry) }}
           {% endfor %}
         </div>
       {% endif %}
     </div>
-    {% endfor %}
+
+    <!-- Tab contents: LIBERTADORES -->
+    <div id="tab-libertadores" class="tab-content hidden">
+      {% if not libertadores %}
+        <div class="bg-dark-700 rounded-2xl border border-dark-500 p-10 text-center">
+          <div class="text-4xl mb-3">📭</div>
+          <p class="text-gray-400 font-medium">Nenhum jogo da Libertadores disponível ainda.</p>
+        </div>
+      {% else %}
+        <div class="space-y-3">
+          {% for entry in libertadores %}
+            {{ m_render_game_card(entry) }}
+          {% endfor %}
+        </div>
+      {% endif %}
+    </div>
   </section>
 
   <!-- Scoring legend -->
@@ -249,11 +146,122 @@
 
 </div>
 
+<!-- Macro auxiliar para renderizar os cards de jogo de forma limpa -->
+{% macro m_render_game_card(entry) %}
+{% set g = entry.game %}
+{% set pred = entry.pred %}
+{% set locked = entry.locked %}
+<div class="bg-dark-700 rounded-2xl border {% if locked %}border-dark-600{% else %}border-dark-500{% endif %} p-4 sm:p-5 transition">
+
+  <!-- Header row: date + status badges -->
+  <div class="flex items-center justify-between mb-4">
+    <span class="text-xs text-gray-500 font-medium">{{ entry.match_dt_formatted }} - R{{ g.rodada.numero }}</span>
+    <div class="flex items-center gap-2">
+      {% if g.encerrado %}
+        <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">Encerrado</span>
+      {% endif %}
+      {% if locked %}
+        <span class="text-xs bg-red-500/15 text-red-400 px-2 py-0.5 rounded-full font-semibold">🔒 Bloqueado</span>
+      {% else %}
+        <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">Aberto</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <form method="POST" action="/">
+    <input type="hidden" name="game_id" value="{{ g.id }}" />
+
+    <!-- Match row: team — score — team -->
+    <div class="flex items-center gap-2 sm:gap-3 justify-center">
+
+      <!-- Home team -->
+      <div class="flex-1 flex flex-col sm:flex-row items-center sm:justify-end gap-2">
+        <span class="font-bold text-sm sm:text-base text-white text-center sm:text-right leading-tight">{{ g.time_casa }}</span>
+      </div>
+
+      <!-- Score inputs / locked display -->
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        {% if locked %}
+          <div class="score-box {% if pred and pred.palpite_casa is not none %}score-filled{% else %}score-empty{% endif %}">
+            {{ pred.palpite_casa if pred and pred.palpite_casa is not none else '–' }}
+          </div>
+          <span class="text-dark-400 font-black text-xl px-0.5">×</span>
+          <div class="score-box {% if pred and pred.palpite_fora is not none %}score-filled{% else %}score-empty{% endif %}">
+            {{ pred.palpite_fora if pred and pred.palpite_fora is not none else '–' }}
+          </div>
+        {% else %}
+          <input type="number" name="home_score" min="0" max="99"
+            value="{{ pred.palpite_casa if pred and pred.palpite_casa is not none else '' }}"
+            class="score-input-lg" placeholder="–" />
+          <span class="text-gray-500 font-black text-xl px-0.5">×</span>
+          <input type="number" name="away_score" min="0" max="99"
+            value="{{ pred.palpite_fora if pred and pred.palpite_fora is not none else '' }}"
+            class="score-input-lg" placeholder="–" />
+        {% endif %}
+      </div>
+
+      <!-- Away team -->
+      <div class="flex-1 flex flex-col sm:flex-row items-center sm:justify-start gap-2">
+        <span class="font-bold text-sm sm:text-base text-white text-center sm:text-left leading-tight">{{ g.time_fora }}</span>
+      </div>
+    </div>
+
+    <!-- Official result block (when finished) -->
+    {% if g.encerrado %}
+    <div class="mt-4 rounded-xl py-3 px-4 flex flex-col sm:flex-row items-center justify-center gap-2
+      {% if pred and pred.palpite_casa is not none %}
+        {% if pred.pontos_ganhos == 3 %}bg-yellow-400/10 border border-yellow-400/30
+        {% elif pred.pontos_ganhos == 1 %}bg-blue-500/10 border border-blue-500/30
+        {% else %}bg-red-500/10 border border-red-500/25{% endif %}
+      {% else %}bg-dark-600 border border-dark-500{% endif %}">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wide">Placar Oficial</span>
+        <span class="text-2xl font-black text-white tracking-tight">{{ g.gols_casa }} × {{ g.gols_fora }}</span>
+      </div>
+      {% if pred and pred.palpite_casa is not none %}
+      <div class="flex items-center gap-1.5">
+        <span class="text-xs text-gray-500">Seu palpite:</span>
+        <span class="text-sm font-bold text-gray-300">{{ pred.palpite_casa }} × {{ pred.palpite_fora }}</span>
+        <span class="text-sm font-black px-2 py-0.5 rounded-full
+          {% if pred.pontos_ganhos == 3 %}text-yellow-400 bg-yellow-400/15
+          {% elif pred.pontos_ganhos == 1 %}text-blue-400 bg-blue-400/15
+          {% else %}text-red-400 bg-red-400/15{% endif %}">
+          {% if pred.pontos_ganhos == 3 %}⭐ +3 pts
+          {% elif pred.pontos_ganhos == 1 %}✓ +1 pt
+          {% else %}✗ 0 pts{% endif %}
+        </span>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Save button (open games only) -->
+    {% if not locked %}
+    <div class="mt-4 flex justify-center">
+      <button type="submit"
+        class="px-6 py-2 bg-brand-500 hover:bg-brand-600 text-dark-900 font-bold text-sm rounded-xl transition">
+        Salvar Palpite
+      </button>
+    </div>
+    {% endif %}
+  </form>
+
+  <!-- Ver palpites da galera (only when locked or finished) -->
+  {% if locked %}
+  <div class="mt-3 flex justify-center">
+    <button onclick="verGalera({{ g.id }}, '{{ g.time_casa }}', '{{ g.time_fora }}')"
+      class="text-xs text-gray-500 hover:text-brand-400 transition flex items-center gap-1.5 py-1 px-3 rounded-lg hover:bg-dark-600">
+      <span>👁️</span> Ver palpites da galera
+    </button>
+  </div>
+  {% endif %}
+
+</div>
+{% endmacro %}
+
 <!-- ── MODAL: Palpites da Galera ── -->
 <div id="galera-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
-  <!-- Backdrop -->
   <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" onclick="fecharModal()"></div>
-  <!-- Panel -->
   <div class="relative bg-dark-700 rounded-2xl border border-dark-500 shadow-2xl w-full max-w-sm max-h-[80vh] flex flex-col">
     <div class="flex items-center justify-between px-5 py-4 border-b border-dark-600">
       <div>
@@ -269,7 +277,6 @@
 </div>
 
 <style>
-  /* Bigger score boxes for locked games */
   .score-box {
     width: 3.2rem; height: 3.2rem;
     display: flex; align-items: center; justify-content: center;
@@ -279,7 +286,6 @@
   .score-filled { background: #1a1a25; color: #fff; border-color: #3d3d55; }
   .score-empty  { background: #111118; color: #4b5563; border-color: #1f1f2e; }
 
-  /* Bigger score inputs for open games */
   .score-input-lg {
     width: 3.2rem; height: 3.2rem; text-align: center;
     background: #1a1a25; border: 2px solid #2e2e42;
@@ -287,16 +293,19 @@
     font-size: 1.5rem; font-weight: 900;
   }
   .score-input-lg:focus { outline: none; border-color: #f59e0b; box-shadow: 0 0 0 2px rgba(245,158,11,0.2); }
-  input[type=number]::-webkit-inner-spin-button,
-  input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+  .tab-content.hidden { display: none; }
 </style>
 
 <script>
 function switchTab(key) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById('tab-' + key).classList.add('active');
-  document.getElementById('tab-btn-' + key).classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active', 'text-white', 'border-gray-500'));
+  
+  const activeTab = document.getElementById('tab-' + key);
+  if (activeTab) activeTab.classList.remove('hidden');
+  
+  const activeBtn = document.getElementById('tab-btn-' + key);
+  if (activeBtn) activeBtn.classList.add('active', 'text-white', 'border-gray-500');
 }
 
 function fecharModal() {
@@ -334,7 +343,7 @@ async function verGalera(gameId, homeTeam, awayTeam) {
       const scoreClass = hasPred ? 'text-white font-black' : 'text-gray-600';
       const avatar  = p.avatar_url
         ? `<img src="${p.avatar_url}" class="w-7 h-7 rounded-full object-cover flex-shrink-0"
-               onerror="this.outerHTML='<div class=\\'w-7 h-7 rounded-full bg-dark-500 flex items-center justify-center text-sm flex-shrink-0\\'>👤</div>'" />`
+               onerror="this.outerHTML='<div class=\\'w-7 h-7 rounded-full bg-dark-500 flex items-center justify-center text-sm flex-shrink-0\\'>👤</div>'"/>`
         : `<div class="w-7 h-7 rounded-full bg-dark-500 flex items-center justify-center text-sm flex-shrink-0">👤</div>`;
       return `
         <div class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-dark-600 hover:bg-dark-500 transition">
