@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% block content %}
 
+<!-- NAVBAR -->
 <nav class="sticky top-0 z-40 bg-dark-800/95 backdrop-blur border-b border-dark-600">
   <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
     <div class="flex items-center gap-2">
@@ -8,10 +9,12 @@
       <span class="font-black text-white text-lg">Admin <span class="text-brand-400">Peteleco</span></span>
     </div>
     <div class="flex items-center gap-2">
-      <a href="{{ url_for('index') }}" class="px-3 py-1.5 text-sm font-semibold text-gray-300 hover:text-brand-400 hover:bg-dark-600 rounded-lg transition">
+      <!-- Mudado de url_for('index') para '/' para evitar quebras -->
+      <a href="/" class="px-3 py-1.5 text-sm font-semibold text-gray-300 hover:text-brand-400 hover:bg-dark-600 rounded-lg transition">
         ← Bolão
       </a>
-      <a href="{{ url_for('logout') }}" class="px-3 py-1.5 text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-dark-600 rounded-lg transition">
+      <!-- Mudado de url_for('logout') para a rota específica do logout do admin -->
+      <a href="/admin/logout" class="px-3 py-1.5 text-sm font-semibold text-red-400 hover:text-red-300 hover:bg-dark-600 rounded-lg transition">
         Sair do Admin
       </a>
     </div>
@@ -20,6 +23,7 @@
 
 <div class="max-w-6xl mx-auto px-4 py-6 space-y-8">
 
+  <!-- ── CRIAR NOVO JOGO ── -->
   <section>
     <h2 class="text-lg font-black text-white mb-3 flex items-center gap-2"><span>➕</span> Criar Novo Jogo</h2>
     <div class="bg-dark-700 rounded-2xl border border-dark-500 p-5">
@@ -59,6 +63,7 @@
     </div>
   </section>
 
+  <!-- ── GERENCIAR JOGOS ── -->
   <section>
     <h2 class="text-lg font-black text-white mb-3 flex items-center gap-2"><span>🏟️</span> Gerenciar Jogos</h2>
     <div class="space-y-3">
@@ -71,7 +76,7 @@
             <span class="text-gray-500 font-normal mx-1">×</span>
             {{ g.time_fora }}
           </span>
-          <span class="text-xs text-gray-500">R{{ g.rodada.numero }} - {{ g.data_jogo.strftime('%d/%m/%Y %H:%M') if g.data_jogo else '' }}</span>
+          <span class="text-xs text-gray-500">R{{ g.rodada.numero if g.rodada else '' }} - {{ g.data_jogo.strftime('%d/%m/%Y %H:%M') if g.data_jogo else '' }}</span>
           {% if g.encerrado %}
             <span class="text-xs bg-green-500/15 text-green-400 px-2 py-0.5 rounded-full font-semibold">
               Resultado: {{ g.gols_casa }}×{{ g.gols_fora }}
@@ -116,6 +121,7 @@
     </div>
   </section>
 
+  <!-- ── GERENCIAR USUÁRIOS ── -->
   <section>
     <h2 class="text-lg font-black text-white mb-3 flex items-center gap-2"><span>👥</span> Gerenciar Usuários</h2>
     <div class="bg-dark-700 rounded-2xl border border-dark-500 overflow-hidden">
