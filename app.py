@@ -259,94 +259,88 @@ def index():
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login'))
-    games = Jogo.query.order_by(Jogo.data_hora).all()
-    ranking = get_ranking()
-    return render_template('admin.html', ranking=ranking, games=games)
+    # Trava de segurança básica
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
+        
+    current_user = User.query.get(session['user_id'])
+    # Se o usuário não for admin, barra o acesso
+    if not current_user or not getattr(current_user, 'is_admin', False):
+        return "Acesso Proibido", 403
 
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
     if request.method == 'POST':
-        pwd = request.form.get('password', '')
-        if pwd == ADMIN_PASSWORD:
-            session['admin_logged_in'] = True
-            return redirect(url_for('admin'))
-        flash('Senha incorreta.', 'error')
-    return render_template('admin_login.html')
-
-@app.route('/admin/logout')
-def admin_logout():
-    session.pop('admin_logged_in', None)
-    return redirect(url_for('admin_login'))
-
-@app.route('/admin/save_result', methods=['POST'])
-def admin_save_result():
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login'))
-    jogo_id = request.form.get('game_id', type=int)
-    home_score = request.form.get('home_score', type=int)
-    away_score = request.form.get('away_score', type=int)
-    jogo = Jogo.query.get(jogo_id)
-    if jogo and home_score is not None and away_score is not None:
-        jogo.gols_casa = home_score
-        jogo.gols_fora = away_score
-        jogo.encerrado = True
-        db.session.commit()
+        action = request.form.get('action')
         
-        for pred in jogo.palpites:
-            pred.pontos_ganhos = calcular_pontos_palpite(pred.palpite_casa, pred.palpite_fora, home_score, away_score)
+        if action == 'create_game':
+            time_casa = request.form.get('time_casa')
+            time_fora = request.form.get('time_fora')
+            campeonato = request.form.get('campeonato')
+            rodada_numero = request.form.get('rodada_numero')
+            data_jogo_str = request.form.get('data_jogo') # formato html: YYYY-MM-DDTHH:MM
             
-        db.session.commit()
-        flash('Resultado salvo e pontos recalculados!', 'success')
-    return redirect(url_for('admin'))
-
-@app.route('/admin/create_game', methods=['POST'])
-def admin_create_game():
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login'))
-    try:
-        camp_nome = request.form.get('camp_nome', 'Brasileirão').strip()
-        rodada_num = request.form.get('rodada_num', type=int)
-        home_team = request.form.get('home_team', '').strip()
-        away_team = request.form.get('away_team', '').strip()
-        date_str = request.form.get('match_date', '')
-        time_str = request.form.get('match_time', '')
-        
-        dt = datetime.strptime(f'{date_str} {time_str}', '%Y-%m-%d %H:%M')
-        
-        camp = Campeonato.query.filter_by(nome=camp_nome).first()
-        if not camp:
-            camp = Campeonato(nome=camp_nome)
-            db.session.add(camp)
+            from datetime import datetime
+            dt_jogo = datetime.strptime(data_jogo_str, '%Y-%m-%dT%H:%M')
+            
+            # Busca ou cria a rodada correspondente
+            rodada = Rodada.query.filter_by(numero=int(rodada_numero), campeonato=campeonato).first()
+            if not rodada:
+                rodada = Rodada(numero=int(rodada_numero), campeonato=campeonato)
+                db.session.add(rodada)
+                db.session.commit()
+                
+            novo_jogo = Jogo(
+                time_casa=time_casa,
+                time_fora=time_fora,
+                data_jogo=dt_jogo,
+                campeonato=campeonato,
+                rodada_id=rodada.id,
+                encerrado=False
+            )
+            db.session.add(novo_jogo)
             db.session.commit()
             
-        rodada = Rodada.query.filter_by(numero=rodada_num, campeonato_id=camp.id).first()
-        if not rodada:
-            rodada = Rodada(numero=rodada_num, campeonato_id=camp.id)
-            db.session.add(rodada)
-            db.session.commit()
+        elif action == 'save_result':
+            game_id = request.form.get('game_id')
+            gols_casa = request.form.get('gols_casa')
+            gols_fora = request.form.get('gols_fora')
+            
+            jogo = Jogo.query.get(game_id)
+            if jogo and gols_casa != '' and gols_fora != '':
+                jogo.gols_casa = int(gols_casa)
+                jogo.gols_fora = int(gols_fora)
+                jogo.encerrado = True
+                db.session.commit()
+                
+                # RECALCULA OS PONTOS DE TODO MUNDO AUTOMATICAMENTE
+                recalcular_pontos_gerais() 
+                
+        elif action == 'delete_game':
+            game_id = request.form.get('game_id')
+            jogo = Jogo.query.get(game_id)
+            if jogo:
+                # Remove palpites atrelados ao jogo primeiro para não dar erro de chave estrangeira
+                for p in jogo.palpites:
+                    db.session.delete(p)
+                db.session.delete(jogo)
+                db.session.commit()
+                
+        elif action == 'delete_user':
+            user_id = request.form.get('user_id')
+            usuario = User.query.get(user_id)
+            if usuario and not usuario.is_admin: # impede de deletar a si mesmo
+                for p in usuario.palpites:
+                    db.session.delete(p)
+                db.session.delete(usuario)
+                db.session.commit()
 
-        jogo = Jogo(time_casa=home_team, time_fora=away_team, data_hora=dt, rodada_id=rodada.id)
-        db.session.add(jogo)
-        db.session.commit()
-        flash('Jogo criado com sucesso!', 'success')
-    except Exception as e:
-        flash(f'Erro: {e}', 'error')
-    return redirect(url_for('admin'))
+        return redirect(url_for('admin'))
 
-@app.route('/admin/delete_user', methods=['POST'])
-def admin_delete_user():
-    if not session.get('admin_logged_in'):
-        return redirect(url_for('admin_login'))
-    user_id = request.form.get('user_id', type=int)
-    user = User.query.get(user_id)
-    if user:
-        db.session.delete(user)
-        db.session.commit()
-        flash('Usuário excluído.', 'success')
-    return redirect(url_for('admin'))
-
+    # --- SESSÃO GET (Carregamento da página) ---
+    # Busca os jogos ordenando pelo campo correto: data_jogo
+    all_games = Jogo.query.order_by(Jogo.data_jogo.desc()).all()
+    all_users = User.query.order_by(User.username.lower()).all()
+    
+    return render_template('admin.html', user=current_user, games=all_games, users=all_users)
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
