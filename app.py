@@ -36,12 +36,12 @@ class User(db.Model):
 
 class Campeonato(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), unique=True, nullable=False) # Ex: Brasileirão, Libertadores
+    name = db.Column(db.String(100), unique=True, nullable=False) # Mantido padronizado interno
     rodadas = db.relationship('Rodada', backref='campeonato', lazy=True, cascade="all, delete-orphan")
 
 class Rodada(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    numero = db.Column(db.Integer, nullable=False) # Ex: 19 (para Brasileirão) ou 8 (Oitavas da Liberta)
+    numero = db.Column(db.Integer, nullable=False)
     campeonato_id = db.Column(db.Integer, db.ForeignKey('campeonato.id'), nullable=False)
     jogos = db.relationship('Jogo', backref='rodada', lazy=True, cascade="all, delete-orphan")
 
@@ -51,7 +51,7 @@ class Jogo(db.Model):
     time_fora = db.Column(db.String(100), nullable=False)
     gols_casa = db.Column(db.Integer, nullable=True)
     gols_fora = db.Column(db.Integer, nullable=True)
-    data_hora = db.Column(db.DateTime, nullable=False)
+    data_hora = db.Column(db.DateTime, nullable=False) # Mantido padrão original
     encerrado = db.Column(db.Boolean, default=False)
     rodada_id = db.Column(db.Integer, db.ForeignKey('rodada.id'), nullable=False)
     palpites = db.relationship('Palpite', backref='jogo', lazy=True, cascade="all, delete-orphan")
@@ -94,6 +94,12 @@ def get_ranking():
         total = sum(p.pontos_ganhos for p in u.palpites)
         ranking_data.append({'user': u, 'total_points': total})
     return sorted(ranking_data, key=lambda x: x['total_points'], reverse=True)
+
+# Função auxiliar para recalcular pontos de um jogo encerrado
+def atualizar_pontos_do_jogo(jogo):
+    for p in jogo.palpites:
+        p.pontos_ganhos = calcular_pontos_palpite(p.palpite_casa, p.palpite_fora, jogo.gols_casa, jogo.gols_fora)
+    db.session.commit()
 
 # ─── Auth routes ──────────────────────────────────────────────────────────────
 
@@ -139,7 +145,7 @@ def logout():
 def game_predictions(game_id):
     if 'user_id' not in session:
         return jsonify({'error': 'Não autenticado'}), 401
-    
+        
     jogo = Jogo.query.get(game_id)
     if not jogo:
         return jsonify({'error': 'Jogo não encontrado'}), 404
@@ -150,7 +156,6 @@ def game_predictions(game_id):
     users = User.query.all()
     result = []
     
-    # Mapeia os palpites existentes para este jogo
     pred_map = {p.user_id: p for p in jogo.palpites}
     
     for u in sorted(users, key=lambda x: x.username.lower()):
@@ -190,7 +195,7 @@ def perfil():
         user.bio = new_bio
         db.session.commit()
         session['username'] = user.username
-        flash('Perfil atualizado com sucesso!', 'success')
+        flash('Perfil updated!', 'success')
         return redirect(url_for('perfil'))
     return render_template('perfil.html', user=user)
 
@@ -225,14 +230,14 @@ def index():
             flash('Palpite salvo!', 'success')
         return redirect(url_for('index'))
 
-    # Coleta de jogos filtrados para Brasileirão (Rodada >= 19) e Libertadores
+    # Coleta de jogos filtrados para Brasileirão e Libertadores
     jogos_brasileirao = Jogo.query.join(Rodada).join(Campeonato)\
-        .filter(Campeonato.nome == 'Brasileirão')\
+        .filter(Campeonato.name == 'Brasileirão')\
         .filter(Rodada.numero >= 19)\
         .order_by(Rodada.numero, Jogo.data_hora).all()
 
     jogos_libertadores = Jogo.query.join(Rodada).join(Campeonato)\
-        .filter(Campeonato.nome == 'Libertadores')\
+        .filter(Campeonato.name == 'Libertadores')\
         .order_by(Rodada.numero, Jogo.data_hora).all()
 
     user_preds = {p.jogo_id: p for p in Palpite.query.filter_by(user_id=user.id).all()}
@@ -242,7 +247,13 @@ def index():
         for g in games_list:
             match_dt_brt = BRASILIA_TZ.localize(g.data_hora) if g.data_hora.tzinfo is None else g.data_hora
             enriched.append({
-                'game': g,
+                'id': g.id,
+                'time_casa': g.time_casa,
+                'time_fora': g.time_fora,
+                'gols_casa': g.gols_casa,
+                'gols_fora': g.gols_fora,
+                'encerrado': g.encerrado,
+                'rodada': g.rodada,
                 'pred': user_preds.get(g.id),
                 'locked': game_is_locked(g),
                 'match_dt_formatted': match_dt_brt.strftime('%d/%m às %H:%M'),
@@ -259,10 +270,8 @@ def index():
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    # Define a sua senha mestra aqui (mude para a senha que você quiser!)
     SENHA_MESTRA = "peteleco2026"
 
-    # Se o administrador ainda não digitou a senha nesta sessão, mostra a tela de login do admin
     if not session.get('admin_autenticado'):
         if request.method == 'POST' and request.form.get('action') == 'admin_login':
             senha_digitada = request.form.get('admin_password')
@@ -271,33 +280,39 @@ def admin():
                 return redirect(url_for('admin'))
             else:
                 return render_template('admin_login.html', error="Senha Incorreta!")
-        
-        # Se for apenas um GET e não estiver autenticado, exibe a tela de pedir senha
         return render_template('admin_login.html')
 
-    # ── SE CHEGOU AQUI, A SENHA ESTÁ CORRETA. ACESSA O PAINEL ──
     if request.method == 'POST':
         action = request.form.get('action')
         
         if action == 'create_game':
             time_casa = request.form.get('time_casa')
             time_fora = request.form.get('time_fora')
-            campeonato = request.form.get('campeonato')
+            camp_nome = request.form.get('campeonato') # 'brasileirao' ou 'libertadores'
             rodada_numero = request.form.get('rodada_numero')
             data_jogo_str = request.form.get('data_jogo')
             
-            from datetime import datetime
+            # Normaliza o nome para o banco
+            nome_real_campeonato = 'Brasileirão' if camp_nome == 'brasileirao' else 'Libertadores'
+            
+            # Garante que o campeonato existe no banco
+            campeonato_obj = Campeonato.query.filter_by(name=nome_real_campeonato).first()
+            if not campeonato_obj:
+                campeonato_obj = Campeonato(name=nome_real_campeonato)
+                db.session.add(campeonato_obj)
+                db.session.commit()
+
             dt_jogo = datetime.strptime(data_jogo_str, '%Y-%m-%dT%H:%M')
             
-            rodada = Rodada.query.filter_by(numero=int(rodada_numero), campeonato=campeonato).first()
+            rodada = Rodada.query.filter_by(numero=int(rodada_numero), campeonato_id=campeonato_obj.id).first()
             if not rodada:
-                rodada = Rodada(numero=int(rodada_numero), campeonato=campeonato)
+                rodada = Rodada(numero=int(rodada_numero), campeonato_id=campeonato_obj.id)
                 db.session.add(rodada)
                 db.session.commit()
                 
             novo_jogo = Jogo(
-                time_casa=time_casa, time_fora=time_fora, data_jogo=dt_jogo,
-                campeonato=campeonato, rodada_id=rodada.id, encerrado=False
+                time_casa=time_casa, time_fora=time_fora, data_hora=dt_jogo,
+                rodada_id=rodada.id, encerrado=False
             )
             db.session.add(novo_jogo)
             db.session.commit()
@@ -313,8 +328,7 @@ def admin():
                 jogo.gols_fora = int(gols_fora)
                 jogo.encerrado = True
                 db.session.commit()
-                if 'recalcular_pontos_gerais' in globals():
-                    recalcular_pontos_gerais()
+                atualizar_points_do_jogo(jogo)
                 
         elif action == 'delete_game':
             game_id = request.form.get('game_id')
@@ -334,24 +348,42 @@ def admin():
 
         return redirect(url_for('admin'))
 
-   # ... (todo o início da rota @app.route('/admin') com os POSTs continua igual)
-
-    # --- SESSÃO GET (Carregamento da página) ---
-    # Busca os jogos e usuários de forma segura
-    try:
-        all_games = Jogo.query.order_by(Jogo.data_jogo.desc()).all()
-    except Exception:
-        # Caso o campo no seu banco seja 'data' ou outro nome, evita travar a página
-        all_games = Jogo.query.all()
-        
-    all_users = User.query.order_by(User.username.lower()).all()
+    # Carrega dados ordenados usando a coluna certa: Jogo.data_hora
+    all_games = Jogo.query.order_by(Jogo.data_hora.desc()).all()
     
-    return render_template('admin.html', games=all_games, users=all_users)
+    # Criado uma lista estática enriquecida para que o Jinja encontre '.campeonato' no admin.html
+    games_enriched = []
+    for g in all_games:
+        games_enriched.append({
+            'id': g.id,
+            'time_casa': g.time_casa,
+            'time_fora': g.time_fora,
+            'gols_casa': g.gols_casa,
+            'gols_fora': g.gols_fora,
+            'encerrado': g.encerrado,
+            'rodada': g.rodada,
+            'campeonato': g.rodada.campeonato.name if (g.rodada and g.rodada.campeonato) else 'Geral',
+            'data_jogo': g.data_hora
+        })
+
+    all_users = []
+    for u in User.query.all():
+        total = sum(p.pontos_ganhos for p in u.palpites)
+        all_users.append({
+            'id': u.id,
+            'username': u.username,
+            'is_admin': u.is_admin,
+            'total_points': total
+        })
+    all_users = sorted(all_users, key=lambda x: x['username'].lower())
+
+    return render_template('admin.html', games=games_enriched, users=all_users)
 
 @app.route('/admin/logout')
 def admin_logout():
     session.pop('admin_autenticado', None)
-    return redirect('/') # Redireciona direto para a página inicial do site de forma segura
+    return redirect('/')
+
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
