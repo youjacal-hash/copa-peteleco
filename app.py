@@ -259,15 +259,23 @@ def index():
 
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
-    # Trava de segurança básica
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-        
-    current_user = User.query.get(session['user_id'])
-    # Se o usuário não for admin, barra o acesso
-    if not current_user or not getattr(current_user, 'is_admin', False):
-        return "Acesso Proibido", 403
+    # Define a sua senha mestra aqui (mude para a senha que você quiser!)
+    SENHA_MESTRA = "peteleco2026"
 
+    # Se o administrador ainda não digitou a senha nesta sessão, mostra a tela de login do admin
+    if not session.get('admin_autenticado'):
+        if request.method == 'POST' and request.form.get('action') == 'admin_login':
+            senha_digitada = request.form.get('admin_password')
+            if senha_digitada == SENHA_MESTRA:
+                session['admin_autenticado'] = True
+                return redirect(url_for('admin'))
+            else:
+                return render_template('admin_login.html', error="Senha Incorreta!")
+        
+        # Se for apenas um GET e não estiver autenticado, exibe a tela de pedir senha
+        return render_template('admin_login.html')
+
+    # ── SE CHEGOU AQUI, A SENHA ESTÁ CORRETA. ACESSA O PAINEL ──
     if request.method == 'POST':
         action = request.form.get('action')
         
@@ -276,12 +284,11 @@ def admin():
             time_fora = request.form.get('time_fora')
             campeonato = request.form.get('campeonato')
             rodada_numero = request.form.get('rodada_numero')
-            data_jogo_str = request.form.get('data_jogo') # formato html: YYYY-MM-DDTHH:MM
+            data_jogo_str = request.form.get('data_jogo')
             
             from datetime import datetime
             dt_jogo = datetime.strptime(data_jogo_str, '%Y-%m-%dT%H:%M')
             
-            # Busca ou cria a rodada correspondente
             rodada = Rodada.query.filter_by(numero=int(rodada_numero), campeonato=campeonato).first()
             if not rodada:
                 rodada = Rodada(numero=int(rodada_numero), campeonato=campeonato)
@@ -289,12 +296,8 @@ def admin():
                 db.session.commit()
                 
             novo_jogo = Jogo(
-                time_casa=time_casa,
-                time_fora=time_fora,
-                data_jogo=dt_jogo,
-                campeonato=campeonato,
-                rodada_id=rodada.id,
-                encerrado=False
+                time_casa=time_casa, time_fora=time_fora, data_jogo=dt_jogo,
+                campeonato=campeonato, rodada_id=rodada.id, encerrado=False
             )
             db.session.add(novo_jogo)
             db.session.commit()
@@ -310,37 +313,36 @@ def admin():
                 jogo.gols_fora = int(gols_fora)
                 jogo.encerrado = True
                 db.session.commit()
-                
-                # RECALCULA OS PONTOS DE TODO MUNDO AUTOMATICAMENTE
-                recalcular_pontos_gerais() 
+                if 'recalcular_pontos_gerais' in globals():
+                    recalcular_pontos_gerais()
                 
         elif action == 'delete_game':
             game_id = request.form.get('game_id')
             jogo = Jogo.query.get(game_id)
             if jogo:
-                # Remove palpites atrelados ao jogo primeiro para não dar erro de chave estrangeira
-                for p in jogo.palpites:
-                    db.session.delete(p)
+                for p in jogo.palpites: db.session.delete(p)
                 db.session.delete(jogo)
                 db.session.commit()
                 
         elif action == 'delete_user':
             user_id = request.form.get('user_id')
             usuario = User.query.get(user_id)
-            if usuario and not usuario.is_admin: # impede de deletar a si mesmo
-                for p in usuario.palpites:
-                    db.session.delete(p)
+            if usuario:
+                for p in usuario.palpites: db.session.delete(p)
                 db.session.delete(usuario)
                 db.session.commit()
 
         return redirect(url_for('admin'))
 
-    # --- SESSÃO GET (Carregamento da página) ---
-    # Busca os jogos ordenando pelo campo correto: data_jogo
+    # Carrega os dados para o painel principal do admin
     all_games = Jogo.query.order_by(Jogo.data_jogo.desc()).all()
     all_users = User.query.order_by(User.username.lower()).all()
-    
-    return render_template('admin.html', user=current_user, games=all_games, users=all_users)
+    return render_template('admin.html', games=all_games, users=all_users)
+
+@app.route('/admin/logout')
+def admin_logout():
+    session.pop('admin_autenticado', None)
+    return redirect(url_for('index'))
 # ─── Run ──────────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
